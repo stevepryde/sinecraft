@@ -10,6 +10,7 @@ const {
 const secret = "7d66adb9059ff4b42fd279167acd6ce9f9ae5779";
 
 class AuthError extends Error { }
+class TokenInvalidError extends AuthError { }
 
 function isAuthenticated(req, res, next) {
     if (req.headers.hasOwnProperty("x-sinecraft-auth-token")) {
@@ -21,20 +22,22 @@ function isAuthenticated(req, res, next) {
             decodedId = decoded.id;
         }
         catch (err) {
-            throw new AuthError("ERROR_INVALID_CREDENTIALS");
+            res.status(498);
+            res.json({ code: 'ERROR_INVALID_TOKEN' });
+            return;
         }
 
         getUserById(decodedId)
             .then(function (user) {
                 if (user.authToken !== token) {
-                    throw new AuthError("ERROR_INVALID_TOKEN");
+                    throw new TokenInvalidError("ERROR_INVALID_TOKEN");
                 }
 
                 req.user = user;
                 next();
             })
             .catch(function (err) {
-                res.status(401);
+                res.status(498);
                 res.json({ code: 'ERROR_INVALID_TOKEN' });
                 return;
             });
@@ -99,11 +102,11 @@ function refreshAuth(token, refreshToken) {
             decoded = jwt.verify(refreshToken, secret);
 
             if (decoded.token !== token) {
-                reject(new AuthError("ERROR_INVALID_TOKEN"));
+                reject(new TokenInvalidError("ERROR_INVALID_TOKEN"));
             }
         }
         catch (err) {
-            reject(new AuthError("ERROR_INVALID_TOKEN"));
+            reject(new TokenInvalidError("ERROR_INVALID_TOKEN"));
         }
 
         // Get user ID from the original token.
@@ -113,7 +116,7 @@ function refreshAuth(token, refreshToken) {
             decodedId = decodedToken.id;
         }
         catch (err) {
-            reject(new AuthError("ERROR_INVALID_TOKEN"));
+            reject(new TokenInvalidError("ERROR_INVALID_TOKEN"));
         }
 
         // Update both user tokens.
@@ -165,5 +168,6 @@ module.exports = {
     createUser,
     isAuthenticated,
     logoutUser,
-    refreshAuth
+    refreshAuth,
+    TokenInvalidError
 };

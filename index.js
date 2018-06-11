@@ -1,10 +1,12 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
-const mainRoutes = require("./src/routes/main");
-const authRoutes = require("./src/routes/authRoute");
 const winston = require("winston");
 const expressWinston = require("express-winston");
+
+const mainRoutes = require("./src/routes/main");
+const authRoutes = require("./src/routes/authRoute");
+const userRoutes = require("./src/routes/userRoute");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -25,6 +27,7 @@ app.use(expressWinston.logger({
 
 app.use('/game', mainRoutes);
 app.use('/auth', authRoutes);
+app.use('/user', userRoutes);
 
 
 var server = app.listen(5000, function () {

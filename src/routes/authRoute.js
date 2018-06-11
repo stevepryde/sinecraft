@@ -5,7 +5,8 @@ const {
     createUser,
     isAuthenticated,
     logoutUser,
-    refreshAuth
+    refreshAuth,
+    TokenInvalidError
 } = require("../auth/auth");
 
 
@@ -13,7 +14,12 @@ const router = express.Router();
 
 function authErrorHandler(res) {
     return (function (err) {
-        if (err instanceof AuthError) {
+        if (err instanceof TokenInvalidError) {
+            res.status(498);
+            res.json({ code: err.message });
+            return;
+        }
+        else if (err instanceof AuthError) {
             res.status(401);
             res.json({ code: err.message });
             return;
