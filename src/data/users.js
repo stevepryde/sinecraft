@@ -28,6 +28,15 @@ function _createuser(user) {
     return new User(user).save();
 }
 
+function _updatepw(_id, newpwhash, newsalt) {
+    return User.findOneAndUpdate(
+        { _id: _id },
+        {
+            pwhash: newpwhash,
+            salt: newsalt
+        }).exec();
+}
+
 function getUserById(_id) {
     return User.findById(_id).exec();
 }
@@ -45,8 +54,10 @@ function updateUserTokens(_id, token, refreshToken) {
     }).exec();
 }
 
+
 module.exports = {
     _createuser,
+    _updatepw,
     getUserAuthStuff,
     getUserById,
     User,

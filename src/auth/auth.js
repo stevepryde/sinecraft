@@ -2,9 +2,10 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const {
     _createuser,
+    _updatepw,
     getUserById,
     getUserAuthStuff,
-    updateUserTokens
+    updateUserTokens,
 } = require("../data/users");
 
 const secret = "7d66adb9059ff4b42fd279167acd6ce9f9ae5779";
@@ -15,10 +16,10 @@ class TokenInvalidError extends AuthError { }
 function isAuthenticated(req, res, next) {
     if (req.headers.hasOwnProperty("x-sinecraft-auth-token")) {
         // Verify JWT
-        const token = req.headers["x-sinecraft-auth-token"];
+        const authToken = req.headers["x-sinecraft-auth-token"];
         let decodedId;
         try {
-            let decoded = jwt.verify(token, secret);
+            let decoded = jwt.verify(authToken, secret);
             decodedId = decoded.id;
         }
         catch (err) {
@@ -29,7 +30,7 @@ function isAuthenticated(req, res, next) {
 
         getUserById(decodedId)
             .then(function (user) {
-                if (user.authToken !== token) {
+                if (user.authToken !== authToken) {
                     throw new TokenInvalidError("ERROR_INVALID_TOKEN");
                 }
 
@@ -53,19 +54,19 @@ function isAuthenticated(req, res, next) {
 function updateTokens(id) {
     // Create new JWT.
     let payload = { id: id };
-    let token = jwt.sign(payload, secret, {
+    let authToken = jwt.sign(payload, secret, {
         expiresIn: "2h"
     });
 
-    let refreshPayload = { token: token };
+    let refreshPayload = { token: authToken };
     let refreshToken = jwt.sign(refreshPayload, secret, {
         expiresIn: "7d"
     });
 
     // Update DB.
-    return updateUserTokens(id, token, refreshToken)
+    return updateUserTokens(id, authToken, refreshToken)
         .then(function (rec) {
-            return { token, refreshToken };
+            return { authToken, refreshToken };
         });
 }
 
@@ -94,14 +95,14 @@ function logoutUser(_id) {
 }
 
 
-function refreshAuth(token, refreshToken) {
+function refreshAuth(authToken, refreshToken) {
     return new Promise(function (resolve, reject) {
         // Validate the refreshToken.
         let decoded;
         try {
             decoded = jwt.verify(refreshToken, secret);
 
-            if (decoded.token !== token) {
+            if (decoded.token !== authToken) {
                 reject(new TokenInvalidError("ERROR_INVALID_TOKEN"));
             }
         }
@@ -112,7 +113,7 @@ function refreshAuth(token, refreshToken) {
         // Get user ID from the original token.
         let decodedId;
         try {
-            let decodedToken = jwt.verify(token, secret, { ignoreExpiration: true });
+            let decodedToken = jwt.verify(authToken, secret, { ignoreExpiration: true });
             decodedId = decodedToken.id;
         }
         catch (err) {
@@ -132,6 +133,21 @@ function validatePassword(pw) {
     return true;
 }
 
+function getNewPasswordHash(password) {
+    let salt = crypto.randomBytes(128);
+    let derivedKey;
+    try {
+        derivedKey = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
+    } catch (err) {
+        throw new AuthError("ERROR_INVALID_CREDENTIALS");
+    }
+
+    return {
+        pwhash: derivedKey.toString('hex'),
+        salt: salt.toString('hex')
+    };
+}
+
 function createUser(details) {
     return new Promise(function (resolve, reject) {
         const username = details.username;
@@ -141,25 +157,46 @@ function createUser(details) {
             reject(new AuthError("ERROR_INVALID_PASSWORD"));
         }
 
-        let salt = crypto.randomBytes(128);
-        let derivedKey;
-        try {
-            derivedKey = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
-        } catch (err) {
-            throw new AuthError("ERROR_INVALID_CREDENTIALS");
-        }
+        let { pwhash, salt } = getNewPasswordHash(password);
 
         let p = _createuser({
             username: username,
             displayName: details.displayName || username,
-            pwhash: derivedKey.toString('hex'),
-            salt: salt.toString('hex')
+            pwhash: pwhash,
+            salt: salt
         }).then(function (user) {
             return authUser(username, password);
         });
 
         resolve(p);
     });
+}
+
+function updatepw(username, password, newPassword) {
+    return getUserAuthStuff(username)
+        .then(function (data) {
+            const { _id, pwhash, salt } = data;
+            let derivedKey;
+            try {
+                derivedKey = crypto.pbkdf2Sync(password, Buffer.from(salt, 'hex'), 100000, 64, 'sha512');
+            } catch (err) {
+                throw new AuthError("ERROR_INVALID_CREDENTIALS");
+            }
+
+            if (derivedKey.toString('hex') !== pwhash) {
+                throw new AuthError("ERROR_INVALID_CREDENTIALS");
+            }
+
+            const newpw = getNewPasswordHash(newPassword);
+            return _updatepw(_id, newpw.pwhash, newpw.salt);
+        })
+        .then(function (updatedUser) {
+            return updateTokens(updatedUser._id);
+        })
+        .catch(function (err) {
+            console.log(err);
+            throw new AuthError("ERROR_INVALID_CREDENTIALS");
+        });
 }
 
 module.exports = {
@@ -169,5 +206,6 @@ module.exports = {
     isAuthenticated,
     logoutUser,
     refreshAuth,
-    TokenInvalidError
+    TokenInvalidError,
+    updatepw
 };

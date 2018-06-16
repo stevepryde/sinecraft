@@ -6,7 +6,8 @@ const {
     isAuthenticated,
     logoutUser,
     refreshAuth,
-    TokenInvalidError
+    TokenInvalidError,
+    updatepw
 } = require("../auth/auth");
 
 
@@ -37,7 +38,7 @@ router.post('/login', function (req, res) {
     authUser(req.body.username, req.body.password)
         .then(function (data) {
             res.json({
-                authToken: data.token,
+                authToken: data.authToken,
                 refreshToken: data.refreshToken
             });
         })
@@ -56,7 +57,18 @@ router.post('/create', function (req, res) {
     createUser(req.body)
         .then(function (data) {
             res.json({
-                authToken: data.token,
+                authToken: data.authToken,
+                refreshToken: data.refreshToken
+            });
+        })
+        .catch(authErrorHandler(res));
+});
+
+router.post('/pw', isAuthenticated, function (req, res) {
+    updatepw(req.user.username, req.body.password, req.body.newPassword)
+        .then(function (data) {
+            res.json({
+                authToken: data.authToken,
                 refreshToken: data.refreshToken
             });
         })
@@ -67,7 +79,7 @@ router.post('/refresh', function (req, res) {
     refreshAuth(req.body.authToken, req.body.refreshToken)
         .then(function (data) {
             res.json({
-                authToken: data.token,
+                authToken: data.authToken,
                 refreshToken: data.refreshToken
             });
         })
