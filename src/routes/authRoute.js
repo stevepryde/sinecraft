@@ -10,29 +10,14 @@ const {
     updatepw
 } = require("../auth/auth");
 
+const {
+    authErrorHandler
+} = require("./errors");
+
 
 const router = express.Router();
 
-function authErrorHandler(res) {
-    return (function (err) {
-        if (err instanceof TokenInvalidError) {
-            res.status(498);
-            res.json({ code: err.message });
-            return;
-        }
-        else if (err instanceof AuthError) {
-            res.status(401);
-            res.json({ code: err.message });
-            return;
-        }
 
-        console.log("ERROR LOG");
-        console.log(err);
-
-        res.status(400);
-        res.json({ code: "ERROR_UNKNOWN" });
-    });
-}
 
 router.post('/login', function (req, res) {
     authUser(req.body.username, req.body.password)
@@ -53,16 +38,17 @@ router.post('/logout', isAuthenticated, function (req, res) {
         .catch(authErrorHandler(res));
 });
 
-router.post('/create', function (req, res) {
-    createUser(req.body)
-        .then(function (data) {
-            res.json({
-                authToken: data.authToken,
-                refreshToken: data.refreshToken
-            });
-        })
-        .catch(authErrorHandler(res));
-});
+// // Disabled: Only create users via admin commands from now on.
+// router.post('/create', function (req, res) {
+//     createUser(req.body)
+//         .then(function (data) {
+//             res.json({
+//                 authToken: data.authToken,
+//                 refreshToken: data.refreshToken
+//             });
+//         })
+//         .catch(authErrorHandler(res));
+// });
 
 router.post('/pw', isAuthenticated, function (req, res) {
     updatepw(req.user.username, req.body.password, req.body.newPassword)

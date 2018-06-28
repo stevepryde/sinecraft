@@ -7,6 +7,10 @@ const {
     getUserAuthStuff,
     updateUserTokens,
 } = require("../data/users");
+const {
+    _createplayer,
+    getPlayerByUserId
+} = require("../data/player");
 
 const secret = "7d66adb9059ff4b42fd279167acd6ce9f9ae5779";
 
@@ -35,9 +39,21 @@ function isAuthenticated(req, res, next) {
                 }
 
                 req.user = user;
+
+                return getPlayerByUserId(decodedId);
+            })
+            .then(function (player) {
+                if (!player) {
+                    return _createplayer(decodedId, req.user.displayName);
+                }
+                return player;
+            })
+            .then(function (player) {
+                req.player = player;
                 next();
             })
             .catch(function (err) {
+                console.log(err);
                 res.status(498);
                 res.json({ code: 'ERROR_INVALID_TOKEN' });
                 return;
