@@ -8,6 +8,35 @@ const mainRoutes = require("./src/routes/main");
 const authRoutes = require("./src/routes/authRoute");
 const userRoutes = require("./src/routes/userRoute");
 
+const {
+    createUser
+} = require("./src/auth/auth");
+const {
+    User
+} = require("./src/data/users");
+
+console.log("Sinecraft Server is starting...");
+
+User.count(function (err, count) {
+    if (!err && count === 0) {
+        // Add admin user.
+        console.log("No users. Adding default admin user...");
+        createUser({
+            username: 'admin',
+            password: 'sinecraft123',
+            displayName: 'Admin'
+        }).then(function (details) {
+            console.log("Admin user created successfully");
+            console.log("Username: admin");
+            console.log("Password: sinecraft123");
+            console.log("Login using the client and change the password");
+        }).catch(function (err) {
+            console.log("Error adding admin user! " + err);
+            process.exit();
+        });
+    }
+})
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 

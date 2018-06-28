@@ -2,14 +2,19 @@ const {
     db
 } = require("./db");
 
-const userSchema = db.Schema({
+const userSchema = new db.Schema({
     username: {
         type: String,
         required: true,
         index: true,
         unique: true
     },
-    displayName: String,
+    displayName: {
+        type: String,
+        required: true,
+        index: true,
+        unique: true
+    },
     pwhash: {
         type: String,
         required: true
@@ -19,12 +24,17 @@ const userSchema = db.Schema({
         required: true
     },
     authToken: String,
-    refreshToken: String
+    refreshToken: String,
+    lastLogin: { type: Date, default: Date.now },
+    isAdmin: { type: Boolean, default: false }
 });
 
 const User = db.model('User', userSchema);
 
 function _createuser(user) {
+    if (!user.displayName) {
+        user.displayName = user.username;
+    }
     return new User(user).save();
 }
 
