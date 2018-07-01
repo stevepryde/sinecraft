@@ -3,14 +3,17 @@
 const { cmdRouter } = require("./commandRouter");
 const { createUser } = require("../auth/auth");
 
-cmdRouter.on("/adduser", function (params, player) {
-    var displayName = params.length > 2 ? params[2] : params[0];
-    var username = params[0];
+cmdRouter.on("/adduser username password displayName?", function (params, player) {
+    var displayName = params.displayName || params.username;
+    var username = params.username;
+    var password = params.password;
     return createUser({
         username: username,
-        password: params[1],
-        displayName: params[2]
+        password: password,
+        displayName: displayName
     }).then(function (user) {
         return "User '" + username + "' created successfully";
-    });
+    }).catch(function (err) {
+        return "Error adding user: " + err.message;
+    })
 });

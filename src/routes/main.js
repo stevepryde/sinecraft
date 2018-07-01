@@ -6,7 +6,9 @@ const {
     authErrorHandler
 } = require("./errors");
 const { cmdRouter } = require("../commands/commandRouter");
+const { CommandError, UsageError } = require("../commands/commandErrors");
 require("../commands/admin");
+require("../commands/debug");
 
 const router = express.Router();
 router.get('/', function (req, res) {
@@ -25,13 +27,17 @@ router.post('/cmd', isAuthenticated, function (req, res) {
             return;
         })
         .catch(function (err) {
-            res.status(500);
+            res.status(200);
 
-            if (err instanceof Error) {
+            if (err instanceof UsageError) {
+                res.json({ message: "Usage: " + err.message });
+            }
+            else if (err instanceof CommandError) {
                 res.json({ message: "Error: " + err.message });
             }
             else {
-                res.json({ message: "An error occurred. Have you tried turning it off and on again?" });
+                res.json({ message: "ERR: " + err });
+                // res.json({ message: "An error occurred. Have you tried turning it off and on again?" });
             }
         });
 });

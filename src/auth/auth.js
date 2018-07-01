@@ -171,6 +171,7 @@ function createUser(details) {
 
         if (!validatePassword(password)) {
             reject(new AuthError("ERROR_INVALID_PASSWORD"));
+            return;
         }
 
         let { pwhash, salt } = getNewPasswordHash(password);
