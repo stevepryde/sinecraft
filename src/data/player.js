@@ -6,53 +6,85 @@ const {
     User
 } = require("./users");
 
+const {
+    getDefaultRoom
+} = require("./room");
+
 const playerSchema = new db.Schema({
-    userId: {
+    user: {
         type: db.Schema.Types.ObjectId,
         ref: 'User',
         index: true,
         required: true,
         unique: true
     },
-    name: String,
-    health: Number,
-    roomId: {
+    name: {
         type: String,
-        index: true
+        index: true,
+        required: true,
+        unique: true
+    },
+    health: {
+        type: Number,
+        default: 100
+    },
+    room: {
+        type: db.Schema.Types.ObjectId,
+        ref: 'Room',
+        required: true,
+        index: true,
+        default: null
     },
     maxInventory: { type: Number, min: 0 },
-    inventory: [{
-        type: db.Schema.Types.ObjectId,
-        ref: 'Item'
-    }],
     attributes: [String],
-    contextItem: [String],  // The IDs of items most recently mentioned.
-    contextPlayer: String   // The ID of the player most recently mentioned.
+    attributeStatus: Object, // Object mapping attributes to state strings.
+    contextItem: [db.Schema.Types.ObjectId],  // The IDs of items most recently mentioned.
+    contextPlayer: db.Schema.Types.ObjectId,   // The ID of the player most recently mentioned.
+    metadata: Object // Object containing various metadata.
 });
 
 const Player = db.model('Player', playerSchema);
 
-function _createplayer(userId, displayName) {
-    let player = {
-        userId: userId,
-        name: displayName,
-        health: 100,
-        room: ''
-    }
-    return new Player(player).save();
+function _createplayer(userId, name) {
+    return getDefaultRoom()
+        .then(function (room) {
+            let player = {
+                user: userId,
+                name: name,
+                health: 100,
+                maxInventory: 20,
+                room: room._id,
+                metadata: {},
+                attributes: [],
+                attributeStatus: {},
+                contextItem: []
+            }
+            return new Player(player).save();
+        });
 }
 
 function getPlayerById(_id) {
-    return Player.findById(_id).exec();
+    return Player.findById(_id).populate('room').populate('user').exec();
 }
 
 function getPlayerByUserId(_id) {
-    return Player.findOne({ userId: _id }).exec();
+    return Player.findOne({ user: _id }).populate('room').populate('user').exec();
+}
+
+function getPlayerByName(name) {
+    return Player.findOne({ name: name }).populate('room').populate('user').exec();
+}
+
+function updatePlayerRoom(_id, roomId) {
+    return Player.findByIdAndUpdate(_id, {
+        room: roomId
+    }).exec();
 }
 
 module.exports = {
     _createplayer,
     getPlayerById,
     getPlayerByUserId,
-    Player
+    Player,
+    updatePlayerRoom
 };

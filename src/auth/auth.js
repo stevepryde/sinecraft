@@ -12,7 +12,7 @@ const {
     getPlayerByUserId
 } = require("../data/player");
 
-const secret = "7d66adb9059ff4b42fd279167acd6ce9f9ae5779";
+const secret = process.env.SINECRAFT_SECRET || "7d66adb9059ff4b42fd279167acd6ce9f9ae5779";
 
 class AuthError extends Error { }
 class TokenInvalidError extends AuthError { }
@@ -44,7 +44,7 @@ function isAuthenticated(req, res, next) {
             })
             .then(function (player) {
                 if (!player) {
-                    return _createplayer(decodedId, req.user.displayName);
+                    return _createplayer(decodedId, req.user.username);
                 }
                 return player;
             })
@@ -90,6 +90,10 @@ function updateTokens(id) {
 function authUser(username, password) {
     return getUserAuthStuff(username)
         .then(function (data) {
+            if (!data) {
+                throw new AuthError("ERROR_INVALID_CREDENTIALS");
+            }
+
             var { _id, pwhash, salt } = data;
             let derivedKey;
             try {
@@ -178,7 +182,6 @@ function createUser(details) {
 
         let p = _createuser({
             username: username,
-            displayName: details.displayName || username,
             pwhash: pwhash,
             salt: salt
         }).then(function (user) {
@@ -188,6 +191,32 @@ function createUser(details) {
         resolve(p);
     });
 }
+
+function createAdminUser(details) {
+    return new Promise(function (resolve, reject) {
+        const username = details.username;
+        const password = details.password;
+
+        if (!validatePassword(password)) {
+            reject(new AuthError("ERROR_INVALID_PASSWORD"));
+            return;
+        }
+
+        let { pwhash, salt } = getNewPasswordHash(password);
+
+        let p = _createuser({
+            username: username,
+            pwhash: pwhash,
+            salt: salt,
+            isAdmin: true
+        }).then(function (user) {
+            return authUser(username, password);
+        });
+
+        resolve(p);
+    });
+}
+
 
 function updatepw(username, password, newPassword) {
     return getUserAuthStuff(username)
@@ -219,6 +248,7 @@ function updatepw(username, password, newPassword) {
 module.exports = {
     AuthError,
     authUser,
+    createAdminUser,
     createUser,
     isAuthenticated,
     logoutUser,

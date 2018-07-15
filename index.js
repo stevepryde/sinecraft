@@ -9,22 +9,36 @@ const authRoutes = require("./src/routes/authRoute");
 const userRoutes = require("./src/routes/userRoute");
 
 const {
-    createUser
+    createAdminUser
 } = require("./src/auth/auth");
+const {
+    Room,
+    roomCreate
+} = require("./src/data/room");
 const {
     User
 } = require("./src/data/users");
 
 console.log("Sinecraft Server is starting...");
 
+Room.count(function (err, count) {
+    if (!err && count === 0) {
+        console.log("No rooms. Adding default room: 'lobby'...");
+        roomCreate("lobby")
+            .catch(function (err) {
+                console.log("Error creating lobby: " + err);
+                process.exit();
+            });
+    }
+});
+
 User.count(function (err, count) {
     if (!err && count === 0) {
         // Add admin user.
         console.log("No users. Adding default admin user...");
-        createUser({
+        createAdminUser({
             username: 'admin',
-            password: 'sinecraft123',
-            displayName: 'Admin'
+            password: 'sinecraft123'
         }).then(function (details) {
             console.log("Admin user created successfully");
             console.log("Username: admin");
@@ -35,7 +49,7 @@ User.count(function (err, count) {
             process.exit();
         });
     }
-})
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));

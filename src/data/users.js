@@ -9,12 +9,6 @@ const userSchema = new db.Schema({
         index: true,
         unique: true
     },
-    displayName: {
-        type: String,
-        required: true,
-        index: true,
-        unique: true
-    },
     pwhash: {
         type: String,
         required: true
@@ -32,10 +26,11 @@ const userSchema = new db.Schema({
 const User = db.model('User', userSchema);
 
 function _createuser(user) {
-    if (!user.displayName) {
-        user.displayName = user.username;
-    }
     return new User(user).save();
+}
+
+function _deluser(_id) {
+    return User.findOneAndRemove({ _id: _id }).exec();
 }
 
 function _updatepw(_id, newpwhash, newsalt) {
@@ -51,10 +46,22 @@ function getUserById(_id) {
     return User.findById(_id).exec();
 }
 
+function getUserByName(username) {
+    return User.findOne({ username: username }).exec();
+}
+
 function getUserAuthStuff(username) {
     return User.findOne({
         username: username
     }, '_id pwhash salt').exec();
+}
+
+function getAllUsers() {
+    return User.find().exec();
+}
+
+function updateUsername(_id, username) {
+    return User.findOneAndUpdate({ _id: _id }, { username: username }).exec();
 }
 
 function updateUserTokens(_id, token, refreshToken) {
@@ -67,9 +74,13 @@ function updateUserTokens(_id, token, refreshToken) {
 
 module.exports = {
     _createuser,
+    _deluser,
     _updatepw,
+    getAllUsers,
     getUserAuthStuff,
     getUserById,
+    getUserByName,
     User,
+    updateUsername,
     updateUserTokens
 };
