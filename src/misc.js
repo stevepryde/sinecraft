@@ -1,8 +1,8 @@
 // Misc functions.
 
 function formatList(l) {
-    if (!l) {
-        return "";
+    if (!l || l.length === 0) {
+        return "nothing";
     }
 
     if (l.length === 1) {

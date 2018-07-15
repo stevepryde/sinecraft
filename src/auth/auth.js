@@ -34,7 +34,7 @@ function isAuthenticated(req, res, next) {
 
         getUserById(decodedId)
             .then(function (user) {
-                if (user.authToken !== authToken) {
+                if (!user || user.authToken !== authToken) {
                     throw new TokenInvalidError("ERROR_INVALID_TOKEN");
                 }
 

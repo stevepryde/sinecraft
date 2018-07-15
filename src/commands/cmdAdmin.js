@@ -116,7 +116,7 @@ cmdRouter.on("/delroom name", function (params, player) {
         });
 });
 
-cmdRouter.on("/joinroom room1 room2", function (params, player) {
+cmdRouter.on("/joinrooms room1 room2", function (params, player) {
     return Promise.all([getRoomByName(params.room1), getRoomByName(params.room2)])
         .then(function (values) {
             if (!values || values.length !== 2) {
