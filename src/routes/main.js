@@ -7,8 +7,9 @@ const {
 } = require("./errors");
 const { cmdRouter } = require("../commands/commandRouter");
 const { CommandError, UsageError } = require("../commands/commandErrors");
-require("../commands/admin");
-require("../commands/debug");
+require("../commands/cmdAdmin");
+require("../commands/cmdDebug");
+require("../commands/cmdPlayer");
 
 const router = express.Router();
 router.get('/', function (req, res) {

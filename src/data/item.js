@@ -8,18 +8,38 @@ const itemSchema = new db.Schema({
         type: String,
         index: true
     },
-    shortDesc: String,
-    longDesc: String,
-    subItems: [String], // Requires canContainItems attribute.
-    attributes: [String],
-    attributeStatus: { // Keys are attributes, values are strings containing attribute status.
-        type: Map,
-        of: String
+    shortDesc: {
+        type: String,
+        default: ''
     },
-    weight: Number, //in Kg.
-    health: Number,
-    maxHealth: Number,
-    hpModifier: Number
+    longDesc: {
+        type: String,
+        default: ''
+    },
+    subItems: [db.Schema.Types.ObjectId], // Array of ids. Requires canContainItems attribute.
+    attributes: [String],
+    attributeStatus: Object, // Object mapping attributes to state strings.
+    metadata: Object, // Object containing metadata.
+    weight: {
+        type: Number, //in Kg.
+        default: 1
+    },
+    health: {
+        type: Number,
+        default: 100
+    },
+    maxHealth: {
+        type: Number,
+        default: 100
+    },
+    hpModifier: {
+        type: Number,
+        default: 10
+    }
 });
 
 const Item = db.model('Item', itemSchema);
+
+module.exports = {
+    Item
+};

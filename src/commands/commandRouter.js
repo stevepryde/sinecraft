@@ -6,6 +6,26 @@ class CommandRouter {
     constructor() {
         this.handlers = {};
         this.usage = {};
+
+        var that = this;
+        that.on('help', function (params, player) {
+            let cmdList = [];
+            let isAdmin = player.user.isAdmin;
+            for (let p in that.handlers) {
+                if (that.usage.hasOwnProperty(p)) {
+                    if (p.startsWith('/') && !isAdmin) {
+                        continue;
+                    }
+
+                    let { usageStr } = that.parseParamSpec(p);
+                    cmdList.push(usageStr);
+                }
+            }
+            cmdList.push("logout");
+
+            cmdList.sort();
+            return "Available commands:\n" + cmdList.join("\n");
+        });
     }
 
     on(cmd, handler) {
@@ -28,16 +48,22 @@ class CommandRouter {
             }
 
             var { baseCmd, outParams } = that.parseCommand(cmd);
-            if (that.handlers.hasOwnProperty(baseCmd)) {
-                var params = that.getParams(baseCmd, outParams);
-                resolve(that.handlers[baseCmd](params, player));
+
+            if (baseCmd.startsWith('/') && !player.user.isAdmin) {
+                reject(new CommandError("Permission Denied!"));
             }
             else {
-                if (baseCmd) {
-                    reject(new CommandError("Unknown command: " + baseCmd));
+                if (that.handlers.hasOwnProperty(baseCmd)) {
+                    var params = that.getParams(baseCmd, outParams);
+                    resolve(that.handlers[baseCmd](params, player));
                 }
                 else {
-                    reject(new CommandError("Unrecognised command"));
+                    if (baseCmd) {
+                        reject(new CommandError("Unknown command: " + baseCmd));
+                    }
+                    else {
+                        reject(new CommandError("Unrecognised command"));
+                    }
                 }
             }
         });
@@ -105,8 +131,6 @@ class CommandRouter {
             curParam = '';
         }
 
-        console.log(outParams);
-
         return {
             baseCmd,
             outParams
@@ -121,9 +145,16 @@ class CommandRouter {
 
         var required = [];
         var optional = [];
+        var greedy;
         var usageList = [];
+        var greedyFlag = false;
         for (let part of usage) {
             usageList.push("<" + part + ">");
+
+            if (greedyFlag) {
+                throw new Error("Command '" + baseCmd + "' is broken. Greedy (*) param not in last position?!");
+            }
+
             if (part.slice(-1) === "?") {
                 optional.push(part.slice(0, -1));
             }
@@ -132,39 +163,53 @@ class CommandRouter {
                     throw new Error("Command '" + baseCmd + "' is broken. Required params after optional ones?!");
                 }
 
-                required.push(part);
+                if (part.slice(-1) === "*") {
+                    greedyFlag = true;
+                    greedy = part.slice(0, 0 - 1);
+                }
+                else {
+                    required.push(part);
+                }
             }
         }
 
         return {
             required,
             optional,
+            greedy,
             usageStr: baseCmd + " " + usageList.join(" ")
         };
     }
 
     getParams(baseCmd, params) {
-        var { required, optional, usageStr } = this.parseParamSpec(baseCmd);
-        console.log(params);
-        console.log("last param is '" + params[-1] + "'");
+        var { required, optional, greedy, usageStr } = this.parseParamSpec(baseCmd);
 
         if ((params[params.length - 1] === "help") ||
             (params.length < required.length) ||
-            (params.length > (required.length + optional.length))) {
+            (!greedy && (params.length > (required.length + optional.length)))) {
 
             throw new UsageError(usageStr);
         }
 
         // Populate params object to return.
         var obj = {}
-        required.concat(optional).forEach(function (value, i) {
-            if (i < params.length) {
-                obj[value] = params[i];
+        var paramsCopy = params.slice();
+        for (let value of required.concat(optional)) {
+            obj[value] = paramsCopy.length > 0 ? paramsCopy.shift() : null;
+        }
+
+        if (greedy) {
+            let k = greedy;
+            if (greedy.slice(-1) === '?') {
+                k = greedy.slice(0, -1);
             }
-            else {
-                obj[value] = null;
+            else if (paramsCopy.length === 0) {
+                // Required greedy param missing!
+                throw new UsageError(usageStr);
             }
-        });
+
+            obj[k] = paramsCopy.join(" ");
+        }
 
         return obj;
     }
