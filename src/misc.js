@@ -1,5 +1,9 @@
 // Misc functions.
 
+const Attributes = {
+    canPickUp: "canPickUp"
+};
+
 function formatList(l) {
     if (!l || l.length === 0) {
         return "nothing";
@@ -13,6 +17,12 @@ function formatList(l) {
     return l.join(", ") + " and " + last;
 }
 
+function hasAttribute(item, attr) {
+    return item.attributes.indexOf(attr) >= 0;
+}
+
 module.exports = {
-    formatList
+    Attributes,
+    formatList,
+    hasAttribute
 };

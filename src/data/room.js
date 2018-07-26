@@ -101,6 +101,10 @@ function getRoomName(room) {
     return [room.prefix, room.name].join(" ");
 }
 
+function getRoomNameWithPrefixIn(room) {
+    return room.prefixIn + " " + getRoomName(room);
+}
+
 function getJoiningRoomNames(_id) {
     return getAllExitsForRoom(_id)
         .then(function (roomExits) {
@@ -156,6 +160,7 @@ module.exports = {
     getRoomByName,
     getRoomExit,
     getRoomName,
+    getRoomNameWithPrefixIn,
     joinRooms,
     Room,
     roomCreate,

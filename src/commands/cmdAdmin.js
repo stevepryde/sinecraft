@@ -3,6 +3,8 @@
 const { cmdRouter } = require("./commandRouter");
 const { createUser } = require("../auth/auth");
 const {
+    addPlayerAttribute,
+    delPlayerAttribute,
     getPlayerByUserId
 } = require("../data/player");
 const {
@@ -22,6 +24,20 @@ const {
     getUserByName,
     updateUsername
 } = require("../data/users");
+const {
+    addItemAttribute,
+    delItemAttribute,
+    getItemById,
+    getItemsForPlayer,
+    getItemsInRoom,
+    itemCreate,
+    itemDelete,
+    updateItem
+} = require("../data/item");
+const {
+    Attributes,
+    hasAttribute
+} = require("../misc");
 
 cmdRouter.on("/adduser username password", function (params, player) {
     var username = params.username;
@@ -69,7 +85,7 @@ cmdRouter.on("/deluser username", function (params, player) {
 
 cmdRouter.on("/addroom name", function (params, player) {
     return roomCreate(params.name)
-        .then(function (user) {
+        .then(function (room) {
             return "Room '" + params.name + "' created successfully";
         }).catch(function (err) {
             return "Error adding room: " + err.message;
@@ -88,6 +104,12 @@ cmdRouter.on("/modroom name param value", function (params, player) {
                     break;
                 case 'longdesc':
                     room.longDesc = params.value;
+                    break;
+                case 'prefix':
+                    room.prefix = params.value;
+                    break;
+                case 'prefixin':
+                    room.prefixIn = params.value;
                     break;
                 default:
                     return "Unknown param: " + params.param;
@@ -150,11 +172,75 @@ cmdRouter.on("/splitrooms room1 room2", function (params, player) {
         });
 });
 
-cmdRouter.on("/list thing", function (params, player) {
+cmdRouter.on("/additem name", function (params, player) {
+    return itemCreate(params.name, player._id)
+        .then(function (item) {
+            return "Item '" + params.name + "' created successfully";
+        }).catch(function (err) {
+            return "Error adding item: " + err.message;
+        });
+});
+
+cmdRouter.on("/moditem itemid param value", function (params, player) {
+    return getItemById(params.itemid)
+        .then(function (item) {
+            switch (params.param.toLowerCase()) {
+                case 'name':
+                    item.name = params.value;
+                    break;
+                case 'shortdesc':
+                    item.shortDesc = params.value;
+                    break;
+                case 'longdesc':
+                    item.longDesc = params.value;
+                    break;
+                case 'prefix':
+                    item.prefix = params.value;
+                    break;
+                case 'weight':
+                    item.weight = parseFloat(params.value);
+                    break;
+                case 'health':
+                    item.health = parseFloat(params.value);
+                    break;
+                case 'maxhealth':
+                    item.maxHealth = parseFloat(params.value);
+                    break;
+                case 'hpModifier':
+                    item.hpModifier = parseFloat(params.value);
+                    break;
+                default:
+                    return "Unknown param: " + params.param;
+            }
+
+            return updateItem(item)
+                .then(function (item) {
+                    return "Item '" + item.name + " (" + params.itemid + ")' updated successfully.";
+                });
+        })
+        .catch(function (err) {
+            return "Error updating item: " + params.name;
+        });
+});
+
+cmdRouter.on("/delitem itemid", function (params, player) {
+    return getItemById(params.itemid)
+        .then(function (item) {
+            return itemDelete(item._id)
+                .then(function () {
+                    return "Item '" + item.name + " (" + params.itemid + ")' deleted successfully.";
+                });
+        })
+        .catch(function (err) {
+            return "Error deleting item: " + err.message;
+        });
+});
+
+cmdRouter.on("/list thing*", function (params, player) {
     switch (params.thing.toLowerCase()) {
         case "rooms":
             return roomList().then(function (rooms) {
-                if (!rooms) {
+                if (!rooms || rooms.length === 0) {
                     return "There are no rooms";
                 }
 
@@ -167,13 +253,39 @@ cmdRouter.on("/list thing", function (params, player) {
             });
         case "users":
             return getAllUsers().then(function (users) {
-                if (!users) {
+                if (!users || users.length === 0) {
                     return "There are no users";
                 }
 
                 var message = '';
                 for (let u of users) {
                     message += u.username + "\n";
+                }
+
+                return message;
+            });
+        case "items":
+            return getItemsInRoom(player.room).then(function (items) {
+                if (!items || items.length === 0) {
+                    return "There are no items in this room";
+                }
+
+                var message = '';
+                for (let i of items) {
+                    message += [i._id, i.name].join("  ") + "\n";
+                }
+
+                return message;
+            });
+        case "my items":
+            return getItemsForPlayer(player._id).then(function (items) {
+                if (!items || items.length === 0) {
+                    return "You have no items";
+                }
+
+                var message = '';
+                for (let i of items) {
+                    message += [i._id, i.name].join("  ") + "\n";
                 }
 
                 return message;
@@ -227,7 +339,53 @@ cmdRouter.on("/info thing name", function (params, player) {
                 .catch(function (err) {
                     return "Couldn't find player '" + params.name + "': " + err.message;
                 });
+        case "item":
+            return getItemById(params.name)
+                .then(function (item) {
+                    var msg = "Item '" + item.name + " (" + item._id + ")'\n";
+                    msg += "Prefix: " + item.prefix + "\n";
+                    msg += "Short Desc: " + item.shortDesc + "\n";
+                    msg += "Long Desc: " + item.longDesc + "\n";
+                    return msg;
+                })
+                .catch(function (err) {
+                    return "Couldn't find item '" + params.name + "': " + err.message;
+                });
         default:
             return "Unknown parameter: " + params.thing;
     }
 });
+
+cmdRouter.on("/addattr itemid attr", function (params, player) {
+    if (!Attributes.hasOwnProperty(params.attr)) {
+        return "No such attribute: " + params.attr;
+    }
+
+    return getItemById(params.itemid)
+        .then(function (item) {
+            return addItemAttribute(item, params.attr);
+        })
+        .then(function (item) {
+            return "Attribute '" + params.attr + "' added to item '" + item.name + "'";
+        })
+        .catch(function (err) {
+            return "Error adding attribute to item";
+        });
+});
+
+cmdRouter.on("/delattr itemid attr", function (params, player) {
+    if (!Attributes.hasOwnProperty(params.attr)) {
+        return "No such attribute: " + params.attr;
+    }
+
+    return getItemById(params.itemid)
+        .then(function (item) {
+            return delItemAttribute(item, params.attr);
+        })
+        .then(function (item) {
+            return "Attribute '" + params.attr + "' removed from item '" + item.name + "'";
+        })
+        .catch(function (err) {
+            return "Error deleting attribute from item";
+        });
+})

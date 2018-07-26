@@ -3,11 +3,21 @@ const { cmdRouter } = require("./commandRouter");
 const {
     getAllExitsForRoom,
     getOtherRoom,
-    getRoomName
+    getRoomName,
+    getRoomNameWithPrefixIn
 } = require("../data/room");
 const {
     updatePlayerRoom
 } = require("../data/player");
+const {
+    getPlayerItemByName,
+    getRoomItemByName,
+    updateItem
+} = require("../data/item");
+const {
+    Attributes,
+    hasAttribute
+} = require("../misc");
 
 cmdRouter.on("go room*", function (params, player) {
     let targetRoom = params.room.toLowerCase();
@@ -58,3 +68,48 @@ cmdRouter.on("go room*", function (params, player) {
             return "There was an error when attempting to visit that room";
         });
 });
+
+cmdRouter.on("drop item*", function (params, player) {
+    return getPlayerItemByName(player._id, params.item)
+        .then(function (item) {
+            if (!item) {
+                return "You don't have that item";
+            }
+
+            item.player = null;
+            item.room = player.room._id;
+            return updateItem(item).then(function (itemSaved) {
+                return "You dropped the " + itemSaved.name + " " + getRoomNameWithPrefixIn(player.room) + ".";
+            });
+        })
+        .catch(function (err) {
+            return "It seems I forgot how to drop things: " + err.message;
+        });
+});
+
+cmdRouter.on("pick up item*", function (params, player) {
+    if (params.up !== 'up') {
+        return "Pick what now? Did you mean 'pick up'?";
+    }
+
+    return getRoomItemByName(player.room._id, params.item)
+        .then(function (item) {
+            if (!item) {
+                return "I can't find that item anywhere";
+            }
+
+            if (!hasAttribute(item, Attributes.canPickUp)) {
+                return "This item cannot be picked up";
+            }
+
+            item.room = null;
+            item.player = player._id;
+            return updateItem(item).then(function (item) {
+                return "You picked up the " + item.name + ".";
+            });
+        })
+        .catch(function (err) {
+            return "It seems I forgot how to pick up things";
+        });
+});
+

@@ -81,7 +81,33 @@ function updatePlayerRoom(_id, roomId) {
     }).exec();
 }
 
+function updatePlayer(player) {
+    return Player.findByIdAndUpdate(player._id, player).exec();
+}
+
+function addPlayerAttribute(player, attr) {
+    if (player.attributes.indexOf(attr) >= 0) {
+        return player; // Nothing to do.
+    }
+
+    player.attributes.push(attr);
+    return updatePlayer(player);
+}
+
+function delPlayerAttribute(player, attr) {
+    let index = player.attributes.indexOf(attr);
+
+    if (index < 0) {
+        return player; // Nothing to do.
+    }
+
+    player.attributes.splice(index, 1);
+    return updatePlayer(player);
+}
+
 module.exports = {
+    addPlayerAttribute,
+    delPlayerAttribute,
     _createplayer,
     getPlayerById,
     getPlayerByUserId,

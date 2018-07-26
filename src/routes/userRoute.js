@@ -10,8 +10,14 @@ const {
 const {
     getAllExitsForRoom,
     getOtherRoom,
-    getRoomName
+    getRoomName,
+    getRoomNameWithPrefixIn
 } = require("../data/room");
+const {
+    getItemName,
+    getItemsForPlayer,
+    getItemsInRoom
+} = require("../data/item");
 const {
     formatList
 } = require("../misc");
@@ -30,27 +36,50 @@ router.get('/me', isAuthenticated, function (req, res) {
 });
 
 router.get('/status', isAuthenticated, function (req, res) {
-    var status = "You are " + req.player.room.prefixIn + " " + getRoomName(req.player.room) + ".\n";
+    var status = "You are " + getRoomNameWithPrefixIn(req.player.room) + ".\n";
     if (req.player.room.shortDesc) {
         status += req.player.room.shortDesc + "\n";
     }
-    // TODO: list items in room.
-    getAllExitsForRoom(req.player.room._id)
-        .then(function (roomExits) {
-            let joinedRooms = [];
-            if (joinedRooms) {
-                for (let r of roomExits) {
-                    let otherRoom = getOtherRoom(req.player.room._id, r.rooms);
-                    joinedRooms.push(getRoomName(otherRoom));
-                }
 
-                status += "You can visit " + formatList(joinedRooms);
+    Promise.all([
+        getItemsInRoom(req.player.room._id),
+        getItemsForPlayer(req.player._id),
+        getAllExitsForRoom(req.player.room._id)
+    ]).then(results => {
+        const [roomItems, playerItems, roomExits] = results;
+
+        let items = [];
+        if (playerItems && playerItems.length > 0) {
+            for (let i of playerItems) {
+                items.push(getItemName(i));
             }
 
-            res.json({
-                status: status
-            });
-        })
+            status += "You are carrying " + formatList(items) + ".\n";
+        }
+
+        items = [];
+        if (roomItems && roomItems.length > 0) {
+            for (let i of roomItems) {
+                items.push(getItemName(i));
+            }
+
+            status += "You can see " + formatList(items) + ".\n";
+        }
+
+        let joinedRooms = [];
+        if (roomExits && roomExits.length > 0) {
+            for (let r of roomExits) {
+                let otherRoom = getOtherRoom(req.player.room._id, r.rooms);
+                joinedRooms.push(getRoomName(otherRoom));
+            }
+
+            status += "You can visit " + formatList(joinedRooms);
+        }
+
+        res.json({
+            status: status
+        });
+    })
         .catch(function (err) {
             res.json({
                 status: status
