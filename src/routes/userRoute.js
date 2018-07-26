@@ -14,6 +14,10 @@ const {
     getRoomNameWithPrefixIn
 } = require("../data/room");
 const {
+    getPlayerName,
+    getPlayersInRoom
+} = require("../data/player");
+const {
     getItemName,
     getItemsForPlayer,
     getItemsInRoom
@@ -44,9 +48,10 @@ router.get('/status', isAuthenticated, function (req, res) {
     Promise.all([
         getItemsInRoom(req.player.room._id),
         getItemsForPlayer(req.player._id),
-        getAllExitsForRoom(req.player.room._id)
+        getAllExitsForRoom(req.player.room._id),
+        getPlayersInRoom(req.player.room._id)
     ]).then(results => {
-        const [roomItems, playerItems, roomExits] = results;
+        const [roomItems, playerItems, roomExits, playersInRoom] = results;
 
         let items = [];
         if (playerItems && playerItems.length > 0) {
@@ -55,6 +60,19 @@ router.get('/status', isAuthenticated, function (req, res) {
             }
 
             status += "You are carrying " + formatList(items) + ".\n";
+        }
+
+        let playerNames = [];
+        if (playersInRoom && playersInRoom.length > 1) {
+            for (let p of playersInRoom) {
+                if (p._id.toString() !== req.player._id.toString()) {
+                    playerNames.push(getPlayerName(p));
+                }
+            }
+
+            if (playerNames.length > 0) {
+                status += "You can see " + formatList(playerNames) + ".\n";
+            }
         }
 
         items = [];

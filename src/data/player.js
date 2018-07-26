@@ -105,12 +105,22 @@ function delPlayerAttribute(player, attr) {
     return updatePlayer(player);
 }
 
+function getPlayersInRoom(roomId) {
+    return Player.find({ room: roomId }).exec();
+}
+
+function getPlayerName(player) {
+    return player.name.charAt(0).toUpperCase() + player.name.slice(1);
+}
+
 module.exports = {
     addPlayerAttribute,
     delPlayerAttribute,
+    getPlayersInRoom,
     _createplayer,
     getPlayerById,
     getPlayerByUserId,
+    getPlayerName,
     Player,
     updatePlayerRoom
 };
