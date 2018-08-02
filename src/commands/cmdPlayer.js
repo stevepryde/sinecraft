@@ -7,15 +7,21 @@ const {
     getRoomNameWithPrefixIn
 } = require("../data/room");
 const {
+    addPlayerMessage,
+    getPlayerInRoom,
+    getPlayerName,
+    getPlayersInRoom,
     updatePlayerRoom
 } = require("../data/player");
 const {
+    getItemName,
     getPlayerItemByName,
     getRoomItemByName,
     updateItem
 } = require("../data/item");
 const {
     Attributes,
+    formatList,
     hasAttribute
 } = require("../misc");
 
@@ -113,3 +119,92 @@ cmdRouter.on("pick up item*", function (params, player) {
         });
 });
 
+cmdRouter.on("give name item*", function (params, player) {
+    return getPlayerItemByName(player._id, params.item)
+        .then(function (item) {
+            if (!item) {
+                return "You don't have that item";
+            }
+
+            return getPlayerInRoom(player.room._id, params.name)
+                .then(function (p) {
+                    if (!p) {
+                        return params.name + " doesn't seem to be here";
+                    }
+
+                    item.player = p._id;
+                    item.room = null;
+                    return updateItem(item)
+                        .then(function (itemSaved) {
+                            return addPlayerMessage(p, getPlayerName(player) + " gave you " + getItemName(itemSaved))
+                                .then(function (_p) {
+                                    return "You give the " + itemSaved.name + " to " + getPlayerName(p);
+                                });
+                        });
+                });
+        })
+        .catch(function (err) {
+            return "It seems I forgot how to give things to people: " + err.message;
+        });
+});
+
+cmdRouter.on("say message*", function (params, player) {
+    return getPlayersInRoom(player.room._id)
+        .then(function (playersInRoom) {
+            if (!playersInRoom || playersInRoom.length < 2) {
+                return "You proudly utter the words only to realise you are the only one in the room";
+            }
+
+            var message = getPlayerName(player) + " said, \"" + params.message + "\"";
+
+            var promises = [];
+            for (let p of playersInRoom) {
+                if (p._id.toString() !== player._id.toString()) {
+                    promises.push(addPlayerMessage(p, message));
+                }
+            }
+
+            return Promise.all(promises)
+                .then(function (playerList) {
+                    if (!playerList || playerList.length === 0) {
+                        return "You speak, but hear only your own echo.";
+                    }
+
+                    var playerNames = [];
+                    for (let p of playerList) {
+                        playerNames.push(getPlayerName(p));
+                    }
+
+                    return "Your message was heard by " + formatList(playerNames);
+                });
+        })
+        .catch(function (err) {
+            return "Say what now?";
+        });
+});
+
+cmdRouter.on("tell name message*", function (params, player) {
+    return getPlayersInRoom(player.room._id)
+        .then(function (playersInRoom) {
+            if (!playersInRoom || playersInRoom.length < 2) {
+                return "You whisper but there is no one here";
+            }
+
+            var message = getPlayerName(player) + " whispered, \"" + params.message + "\"";
+
+            var promises = [];
+            for (let p of playersInRoom) {
+                if (p.name.toLowerCase() === params.name.toLowerCase()) {
+                    return addPlayerMessage(p, message)
+                        .then(function (p) {
+                            return "You whisper to " + getPlayerName(p);
+                        });
+                }
+            }
+
+            return "You whisper but " + params.name + " is not here";
+        })
+        .catch(function (err) {
+            return "Say what now?";
+        });
+});

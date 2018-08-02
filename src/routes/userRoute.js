@@ -14,6 +14,8 @@ const {
     getRoomNameWithPrefixIn
 } = require("../data/room");
 const {
+    clearPlayerMessages,
+    getPlayerMetadata,
     getPlayerName,
     getPlayersInRoom
 } = require("../data/player");
@@ -40,7 +42,13 @@ router.get('/me', isAuthenticated, function (req, res) {
 });
 
 router.get('/status', isAuthenticated, function (req, res) {
-    var status = "You are " + getRoomNameWithPrefixIn(req.player.room) + ".\n";
+    var status = "";
+    var messages = getPlayerMetadata(req.player, 'messages', []);
+    for (let message of messages) {
+        status += message + "\n\n";
+    }
+
+    status += "You are " + getRoomNameWithPrefixIn(req.player.room) + ".\n";
     if (req.player.room.shortDesc) {
         status += req.player.room.shortDesc + "\n";
     }
@@ -49,9 +57,10 @@ router.get('/status', isAuthenticated, function (req, res) {
         getItemsInRoom(req.player.room._id),
         getItemsForPlayer(req.player._id),
         getAllExitsForRoom(req.player.room._id),
-        getPlayersInRoom(req.player.room._id)
+        getPlayersInRoom(req.player.room._id),
+        clearPlayerMessages(req.player)
     ]).then(results => {
-        const [roomItems, playerItems, roomExits, playersInRoom] = results;
+        const [roomItems, playerItems, roomExits, playersInRoom, _p] = results;
 
         let items = [];
         if (playerItems && playerItems.length > 0) {

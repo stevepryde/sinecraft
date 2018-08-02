@@ -245,6 +245,11 @@ function updatepw(username, password, newPassword) {
         });
 }
 
+function setUserPassword(userId, newPassword) {
+    const newpw = getNewPasswordHash(newPassword);
+    return _updatepw(userId, newpw.pwhash, newpw.salt);
+}
+
 module.exports = {
     AuthError,
     authUser,
@@ -253,6 +258,7 @@ module.exports = {
     isAuthenticated,
     logoutUser,
     refreshAuth,
+    setUserPassword,
     TokenInvalidError,
     updatepw
 };

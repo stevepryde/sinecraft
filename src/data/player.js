@@ -109,18 +109,49 @@ function getPlayersInRoom(roomId) {
     return Player.find({ room: roomId }).exec();
 }
 
+function getPlayerInRoom(roomId, name) {
+    return Player.findOne({ room: roomId, name: name.toLowerCase() }).exec();
+}
+
 function getPlayerName(player) {
     return player.name.charAt(0).toUpperCase() + player.name.slice(1);
 }
 
+function getPlayerMetadata(player, mdkey, defaultValue) {
+    if (!player.metadata) {
+        player.metadata = {};
+    }
+
+    if (!player.metadata.hasOwnProperty(mdkey)) {
+        player.metadata[mdkey] = defaultValue;
+    }
+
+    return player.metadata[mdkey];
+}
+
+function addPlayerMessage(player, message) {
+    var messages = getPlayerMetadata(player, 'messages', []);
+    messages.push(message);
+    return updatePlayer(player);
+}
+
+function clearPlayerMessages(player) {
+    player.metadata.messages = [];
+    return updatePlayer(player);
+}
+
 module.exports = {
     addPlayerAttribute,
-    delPlayerAttribute,
-    getPlayersInRoom,
+    addPlayerMessage,
+    clearPlayerMessages,
     _createplayer,
+    delPlayerAttribute,
     getPlayerById,
     getPlayerByUserId,
+    getPlayerInRoom,
+    getPlayerMetadata,
     getPlayerName,
+    getPlayersInRoom,
     Player,
     updatePlayerRoom
 };

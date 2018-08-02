@@ -36,6 +36,9 @@ router.post('/cmd', isAuthenticated, function (req, res) {
             else if (err instanceof CommandError) {
                 res.json({ message: "Error: " + err.message });
             }
+            else if (err instanceof Error) {
+                res.json({ message: err.message });
+            }
             else {
                 res.json({ message: "ERR: " + err });
                 // res.json({ message: "An error occurred. Have you tried turning it off and on again?" });

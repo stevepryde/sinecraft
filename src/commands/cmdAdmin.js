@@ -1,7 +1,7 @@
 /* Admin command handler */
 
 const { cmdRouter } = require("./commandRouter");
-const { createUser } = require("../auth/auth");
+const { createUser, setUserPassword } = require("../auth/auth");
 const {
     addPlayerAttribute,
     delPlayerAttribute,
@@ -61,6 +61,12 @@ cmdRouter.on("/moduser username param value", function (params, player) {
                         .then(function (user) {
                             return "User '" + params.username + "' updated to '" + params.value + "'";
                         });
+                case 'password':
+                    return setUserPassword(user._id, params.value)
+                        .then(function (updatedUser) {
+                            return "User '" + params.username + "' password updated.";
+                        });
+
                 default:
                     return "Unknown param: " + params.param;
             }
